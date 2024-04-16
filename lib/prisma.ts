@@ -1,13 +1,26 @@
 import { PrismaClient } from '@prisma/client';
 
-const prismaClientSingleton = () => new PrismaClient();
+// This function checks if a PrismaClient instance exists in the global scope,
+// and if not, creates and stores it. This way, the same instance is reused.
+const prismaClientSingleton = (): PrismaClient => {
+  // Check if the instance already exists in the global namespace
+  if (!globalThis.prisma) {
+    // Assign a new instance if it doesn't exist
+    globalThis.prisma = new PrismaClient();
 
-export const prisma = globalThis.prisma || prismaClientSingleton();
+    // Log the creation in non-production environments for debugging purposes
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Created new instance of PrismaClient');
+    }
+  }
+  return globalThis.prisma;
+};
 
+// Make the singleton instance available for import
+export const prisma = prismaClientSingleton();
+
+// Extend the NodeJS global type with the PrismaClient instance
+// This is a TypeScript specific extension for better type safety
 declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
-}
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
+  var prisma: PrismaClient | undefined;
 }
